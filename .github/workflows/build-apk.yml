@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "**" ]
   workflow_dispatch:
 
 jobs:
@@ -30,11 +30,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Capacitor CLI & Android platform
+      - name: Initialize Capacitor Android Project
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap add android || true
-          npx cap sync android
+          npx cap init "Grit & Static" "com.gritstatic.app" --web-dir dist || true
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            npx cap sync android
+          fi
 
       - name: Build APK with Gradle
         run: |
