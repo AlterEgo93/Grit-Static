@@ -1,0 +1,6 @@
+{
+  "name": "Grit & Static: Personal Trainer",
+  "description": "AMOLED offline-first personal trainer with circuit progression, Japanese walking metronome, vibration cues, and automated load scaling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
