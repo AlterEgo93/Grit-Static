@@ -1,6 +1,6 @@
 {
   "appId": "com.gritstatic.app",
-  "appName": "Grit & Static",
+  "appName": "Grit and Static",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
