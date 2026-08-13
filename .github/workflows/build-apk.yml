@@ -34,17 +34,23 @@ jobs:
         run: |
           npx cap add android || true
           npx cap sync android
-          python3 -c '
-import os
-manifest_path = "android/app/src/main/AndroidManifest.xml"
-if os.path.exists(manifest_path):
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    if "android.permission.VIBRATE" not in content:
-        content = content.replace("</manifest>", "    <uses-permission android:name=\"android.permission.VIBRATE\" />\n</manifest>")
-        with open(manifest_path, "w", encoding="utf-8") as f:
-            f.write(content)
-'
+
+      - name: Inject Android VIBRATE Permission
+        run: |
+          cat << 'EOF' > update_manifest.py
+          import os
+          path = "android/app/src/main/AndroidManifest.xml"
+          if os.path.exists(path):
+              with open(path, "r", encoding="utf-8") as f:
+                  data = f.read()
+              if "android.permission.VIBRATE" not in data:
+                  perm = '    <uses-permission android:name="android.permission.VIBRATE" />\n'
+                  data = data.replace("</manifest>", perm + "</manifest>")
+                  with open(path, "w", encoding="utf-8") as f:
+                      f.write(data)
+                  print("Permission injected successfully")
+          EOF
+          python3 update_manifest.py
 
       - name: Build APK with Gradle
         run: |
