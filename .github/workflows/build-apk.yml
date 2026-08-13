@@ -1,5 +1,4 @@
 name: Build Android APK
-# Trigger rebuild v4: Fix BouncyCastle bcprov jar error and setup gradle cache
 
 on:
   push:
@@ -24,7 +23,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 3.5 Setup Gradle
+      - name: 3.5 Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v3
         with:
           cache-disabled: false
@@ -35,7 +34,7 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Fresh Android Platform & Configure Gradle
+      - name: 6. Prepare Fresh Android Platform & Configure
         run: |
           rm -rf android
           npx cap add android
@@ -43,7 +42,7 @@ jobs:
           python3 -c '
           import os
 
-          # 1. Update AndroidManifest.xml
+          # Update AndroidManifest.xml permissions
           m_path = "android/app/src/main/AndroidManifest.xml"
           if os.path.exists(m_path):
               with open(m_path, "r", encoding="utf-8") as f:
@@ -65,30 +64,17 @@ jobs:
                   with open(m_path, "w", encoding="utf-8") as f:
                       f.write(data)
 
-          # 2. Configure gradle.properties with high memory
+          # Configure gradle.properties for memory
           p_path = "android/gradle.properties"
           if os.path.exists(p_path):
               with open(p_path, "a", encoding="utf-8") as f:
                   f.write("\norg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n")
 
-          # 3. Add resolutionStrategy for bouncycastle in build.gradle
+          # Configure build.gradle for bouncycastle resolution
           b_path = "android/build.gradle"
           if os.path.exists(b_path):
-              with open(b_path, "r", encoding="utf-8") as f:
-                  b_data = f.read()
-              rule = """
-allprojects {
-    configurations.all {
-        resolutionStrategy {
-            force "org.bouncycastle:bcprov-jdk18on:1.78"
-        }
-    }
-}
-"""
-              if "resolutionStrategy" not in b_data:
-                  b_data += rule
-                  with open(b_path, "w", encoding="utf-8") as f:
-                      f.write(b_data)
+              with open(b_path, "a", encoding="utf-8") as f:
+                  f.write("\nallprojects { configurations.all { resolutionStrategy { force \"org.bouncycastle:bcprov-jdk18on:1.78\" } } }\n")
           '
 
           npx cap sync android
@@ -106,4 +92,3 @@ allprojects {
         with:
           name: Grit-And-Static-App-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
