@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Grit and Static</string>
+    <string name="title_activity_main">Grit and Static</string>
+    <string name="package_name">com.gritstatic.app</string>
+    <string name="custom_url_scheme">com.gritstatic.app</string>
+</resources>
