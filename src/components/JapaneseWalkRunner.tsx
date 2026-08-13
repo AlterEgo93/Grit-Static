@@ -166,6 +166,7 @@ export const JapaneseWalkRunner: React.FC<Props> = ({
   };
 
   const toggleSession = () => {
+    haptics.unlockVibration();
     if (!isRunning) {
       haptics.triggerGoSignal(settings.soundEnabled);
       if (settings.keepScreenOn) haptics.requestWakeLock();

@@ -30,10 +30,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Add Android Platform & Sync
+      - name: Add Android Platform, Permissions & Sync
         run: |
           npx cap add android || true
           npx cap sync android
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            if ! grep -q "android.permission.VIBRATE" android/app/src/main/AndroidManifest.xml; then
+              sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.VIBRATE" \/>' android/app/src/main/AndroidManifest.xml
+            fi
+          fi
 
       - name: Build APK with Gradle
         run: |

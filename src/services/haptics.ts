@@ -1,6 +1,7 @@
 /**
  * Grit & Static: Personal Trainer - Haptics, Audio Synth & Screen WakeLock Service
  */
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 
 class HapticService {
   private audioCtx: AudioContext | null = null;
@@ -21,13 +22,52 @@ class HapticService {
   }
 
   /**
-   * Safe vibration wrapper
+   * Unlocks vibration/audio context on user gesture (click/tap).
+   * Call this on button presses (e.g. Start Workout) to satisfy Chrome gesture policy.
+   */
+  public unlockVibration(): void {
+    try {
+      this.getAudioContext();
+      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+        navigator.vibrate(1);
+      }
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
+   * Safe vibration wrapper using Capacitor Native Haptics with Web Fallback
    */
   public vibrate(pattern: number | number[]): boolean {
+    const duration = Array.isArray(pattern) ? (pattern[0] || 100) : pattern;
+
+    // 1. Try Native Capacitor Haptics (For APK)
+    try {
+      Haptics.vibrate({ duration: Math.max(duration, 30) }).catch(() => {
+        // Fallback to Web API if native call fails
+        if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+          navigator.vibrate(pattern);
+        }
+      });
+    } catch {
+      // Fallback
+      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(pattern);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // 2. Also trigger navigator.vibrate for Web/PWA
     if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
       try {
-        return navigator.vibrate(pattern);
-      } catch (e) {
+        navigator.vibrate(pattern);
+        return true;
+      } catch {
         return false;
       }
     }

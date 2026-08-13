@@ -169,6 +169,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({
     setCompletedSetsList([]);
     setPhase('ready');
 
+    haptics.unlockVibration();
     if (settings.keepScreenOn) {
       haptics.requestWakeLock();
     }

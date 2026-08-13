@@ -144,20 +144,44 @@ export const SettingsBackupView: React.FC<Props> = ({ settings, onRefresh, onOpe
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            {/* Vibration Toggle */}
-            <div className="flex items-center justify-between bg-[#0c0c0e] p-3.5 rounded-xl border border-zinc-800">
-              <div>
-                <strong className="text-white block font-semibold">Вібрація (Haptics)</strong>
-                <span className="text-zinc-500 text-[11px]">Сигнали таймерів та метронома</span>
+            {/* Vibration Toggle & Test */}
+            <div className="flex flex-col gap-2 bg-[#0c0c0e] p-3.5 rounded-xl border border-zinc-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <strong className="text-white block font-semibold">Вібрація (Haptics)</strong>
+                  <span className="text-zinc-500 text-[11px]">Сигнали таймерів та метронома</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={localSettings.vibrationEnabled}
+                  onChange={(e) =>
+                    handleSaveSettings({ ...localSettings, vibrationEnabled: e.target.checked })
+                  }
+                  className="w-5 h-5 accent-blue-600 cursor-pointer rounded"
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={localSettings.vibrationEnabled}
-                onChange={(e) =>
-                  handleSaveSettings({ ...localSettings, vibrationEnabled: e.target.checked })
-                }
-                className="w-5 h-5 accent-blue-600 cursor-pointer rounded"
-              />
+
+              <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.unlockVibration();
+                    const success = haptics.vibrate([150, 80, 150, 80, 250]);
+                    if (success) {
+                      setStatusMessage('Сигнал вібрації відправлено на пристрій.');
+                    } else {
+                      setErrorMessage('Браузер або ОС блокує вібрацію. Перевірте налаштування звуку пристрою.');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs font-medium transition-colors flex items-center gap-1.5"
+                >
+                  <Vibrate className="w-3.5 h-3.5 text-blue-400" />
+                  Тест вібрації
+                </button>
+                <span className="text-[10px] text-zinc-500">
+                  Потрібно увімкнути "Вібрацію дотику" в Android
+                </span>
+              </div>
             </div>
 
             {/* Sound Toggle */}
