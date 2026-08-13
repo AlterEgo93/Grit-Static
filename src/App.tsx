@@ -7,6 +7,7 @@ import {
   CalendarDayInfo,
 } from './types';
 import { db } from './services/db';
+import { notificationService } from './services/notifications';
 import { Navbar } from './components/Navbar';
 import { ActiveWorkoutView } from './components/ActiveWorkoutView';
 import { CalendarView } from './components/CalendarView';
@@ -71,6 +72,7 @@ export default function App() {
 
   useEffect(() => {
     reloadData();
+    notificationService.scheduleWorkoutReminders();
   }, [reloadData]);
 
   // Calculate consecutive active training days

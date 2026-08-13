@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { db } from '../services/db';
 import { haptics } from '../services/haptics';
+import { notificationService } from '../services/notifications';
 import { ExerciseIllustration } from './ExerciseIllustration';
 import { JapaneseWalkRunner } from './JapaneseWalkRunner';
 import {
@@ -218,6 +219,11 @@ export const ActiveWorkoutView: React.FC<Props> = ({
       setTimeRemaining(ex.currentValue);
       setIsTimerRunning(true);
       setPhase('work');
+      notificationService.scheduleTimerAlert(
+        'Час вичерпано! ⏱️',
+        `Підхід для «${ex.name}» завершено!`,
+        ex.currentValue
+      );
     } else if (ex.type === 'interval_walk') {
       // Do NOT run outer countdown timer for interval_walk!
       // JapaneseWalkRunner manages its own timer and calls finishCurrentSet on completion
@@ -232,6 +238,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({
 
   const handleTimerComplete = () => {
     setIsTimerRunning(false);
+    notificationService.cancelTimerAlert();
     if (phase === 'work') {
       finishCurrentSet();
     } else if (phase === 'rest') {
@@ -245,6 +252,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({
     if (!ex || !selectedBlock || !activeSession || !currentStep) return;
 
     setIsTimerRunning(false);
+    notificationService.cancelTimerAlert();
     haptics.triggerSetComplete(settings.soundEnabled);
 
     const setLog: SetLog = {
@@ -279,10 +287,16 @@ export const ActiveWorkoutView: React.FC<Props> = ({
       setTimeRemaining(restTime);
       setIsTimerRunning(true);
       setPhase('rest');
+      notificationService.scheduleTimerAlert(
+        'Відпочинок завершено! 💪',
+        'Час переходити до наступного підходу.',
+        restTime
+      );
     }
   };
 
   const advanceToNextSet = () => {
+    notificationService.cancelTimerAlert();
     if (queueIndex < workoutQueue.length - 1) {
       setIsTimerRunning(false);
       setQueueIndex((i) => i + 1);
@@ -292,6 +306,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({
 
   const skipRest = () => {
     setIsTimerRunning(false);
+    notificationService.cancelTimerAlert();
     advanceToNextSet();
   };
 
@@ -440,6 +455,7 @@ export const ActiveWorkoutView: React.FC<Props> = ({
     setActiveSession(completedSession);
     setPhase('finished');
     haptics.releaseWakeLock();
+    notificationService.scheduleWorkoutReminders();
     onWorkoutComplete();
   };
 

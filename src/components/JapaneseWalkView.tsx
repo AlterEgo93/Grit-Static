@@ -1,6 +1,7 @@
 import React from 'react';
 import { Settings } from '../types';
 import { db } from '../services/db';
+import { notificationService } from '../services/notifications';
 import { JapaneseWalkRunner } from './JapaneseWalkRunner';
 import { Footprints, Zap } from 'lucide-react';
 
@@ -43,6 +44,7 @@ export const JapaneseWalkView: React.FC<Props> = ({ settings, onLoggedWorkout })
     };
 
     db.logSession(session);
+    notificationService.scheduleWorkoutReminders();
     if (onLoggedWorkout) onLoggedWorkout();
   };
 

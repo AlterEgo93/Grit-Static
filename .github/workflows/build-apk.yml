@@ -41,9 +41,20 @@ jobs:
           if os.path.exists(path):
               with open(path, "r", encoding="utf-8") as f:
                   data = f.read()
-              if "android.permission.VIBRATE" not in data:
-                  perm = "    <uses-permission android:name=\"android.permission.VIBRATE\" />\n"
-                  data = data.replace("</manifest>", perm + "</manifest>")
+              perms = [
+                  "android.permission.VIBRATE",
+                  "android.permission.POST_NOTIFICATIONS",
+                  "android.permission.SCHEDULE_EXACT_ALARM",
+                  "android.permission.USE_EXACT_ALARM",
+                  "android.permission.WAKE_LOCK",
+                  "android.permission.RECEIVE_BOOT_COMPLETED"
+              ]
+              to_add = ""
+              for p in perms:
+                  if p not in data:
+                      to_add += f"    <uses-permission android:name=\"{p}\" />\n"
+              if to_add:
+                  data = data.replace("</manifest>", to_add + "</manifest>")
                   with open(path, "w", encoding="utf-8") as f:
                       f.write(data)
           '
