@@ -95,41 +95,73 @@ export const JapaneseWalkRunner: React.FC<Props> = ({
     };
   }, [isRunning, subPhase, fastBpm, normalBpm, settings.soundEnabled]);
 
-  // Main Timer Countdown Loop
-  useEffect(() => {
-    if (isRunning && subPhase !== 'finished') {
-      timerIntervalRef.current = setInterval(() => {
-        setTotalSecondsElapsed((t) => t + 1);
+  const targetPhaseEndTimeRef = useRef<number | null>(null);
 
-        setPhaseSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            // Transition logic
-            handlePhaseTransition();
-            return 0; // Temporary before next phase sets state
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
+  // Schedule local notification when entering a new phase so phone vibrates in pocket on phase transition
+  const schedulePhaseNotification = (phaseName: string, durationSec: number) => {
+    notificationService.scheduleTimerAlert(
+      `Японська ходьба: ${phaseName}! 🚶‍♂️`,
+      `Завершено інтервал ${phaseName}. Переходь до наступної фази!`,
+      durationSec
+    );
+  };
+
+  // Main Timer Countdown Loop (Timestamp-based)
+  useEffect(() => {
+    if (!isRunning || subPhase === 'finished') {
+      targetPhaseEndTimeRef.current = null;
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      return;
     }
+
+    if (!targetPhaseEndTimeRef.current && phaseSecondsRemaining > 0) {
+      targetPhaseEndTimeRef.current = Date.now() + phaseSecondsRemaining * 1000;
+    }
+
+    const checkPhaseTime = () => {
+      if (!targetPhaseEndTimeRef.current) return;
+      const remainingSec = Math.max(0, Math.ceil((targetPhaseEndTimeRef.current - Date.now()) / 1000));
+      setPhaseSecondsRemaining(remainingSec);
+      setTotalSecondsElapsed((t) => t + 1);
+
+      if (remainingSec === 0) {
+        targetPhaseEndTimeRef.current = null;
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        handlePhaseTransition();
+      }
+    };
+
+    timerIntervalRef.current = setInterval(checkPhaseTime, 1000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isRunning) {
+        checkPhaseTime();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isRunning, subPhase, currentCycle, cycles, intervalMinutes, warmupMinutes, cooldownMinutes, settings.soundEnabled]);
+  }, [isRunning, subPhase, currentCycle]);
 
   const handlePhaseTransition = () => {
+    targetPhaseEndTimeRef.current = null;
     if (subPhase === 'warmup') {
       // Warmup finished -> Start Fast Phase of Cycle 1
       setSubPhase('fast');
-      setPhaseSecondsRemaining(intervalMinutes * 60);
+      const dur = intervalMinutes * 60;
+      setPhaseSecondsRemaining(dur);
       haptics.triggerPhaseChangeAlert(true, settings.soundEnabled);
+      schedulePhaseNotification('Швидкий темп 🏃‍♂️', dur);
     } else if (subPhase === 'fast') {
       // Fast phase finished -> Start Normal Phase of current cycle
       setSubPhase('normal');
-      setPhaseSecondsRemaining(intervalMinutes * 60);
+      const dur = intervalMinutes * 60;
+      setPhaseSecondsRemaining(dur);
       haptics.triggerPhaseChangeAlert(false, settings.soundEnabled);
+      schedulePhaseNotification('Звичайний темп 🚶‍♂️', dur);
     } else if (subPhase === 'normal') {
       // Normal phase finished -> Cycle complete!
       const newCompleted = completedCycles + 1;
@@ -139,18 +171,23 @@ export const JapaneseWalkRunner: React.FC<Props> = ({
         // Next cycle
         setCurrentCycle((c) => c + 1);
         setSubPhase('fast');
-        setPhaseSecondsRemaining(intervalMinutes * 60);
+        const dur = intervalMinutes * 60;
+        setPhaseSecondsRemaining(dur);
         haptics.triggerPhaseChangeAlert(true, settings.soundEnabled);
+        schedulePhaseNotification('Швидкий темп 🏃‍♂️', dur);
       } else {
         // All cycles completed -> Start Cooldown
         setSubPhase('cooldown');
-        setPhaseSecondsRemaining(cooldownMinutes * 60);
+        const dur = cooldownMinutes * 60;
+        setPhaseSecondsRemaining(dur);
         haptics.triggerPhaseChangeAlert(false, settings.soundEnabled);
+        schedulePhaseNotification('Заминка 🚶‍♂️', dur);
       }
     } else if (subPhase === 'cooldown') {
       // Session finished completely!
       setSubPhase('finished');
       setIsRunning(false);
+      notificationService.cancelTimerAlert();
       haptics.triggerWorkoutFinished(settings.soundEnabled);
       haptics.releaseWakeLock();
 

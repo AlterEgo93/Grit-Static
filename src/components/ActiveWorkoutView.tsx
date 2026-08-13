@@ -90,31 +90,53 @@ export const ActiveWorkoutView: React.FC<Props> = ({
     };
   }, []);
 
-  // Main Timer Loop
+  // Target end timestamp ref for accurate background-proof countdown
+  const targetEndTimeRef = useRef<number | null>(null);
+
+  // Main Timer Loop (Timestamp-based so it handles background/screen lock correctly)
   useEffect(() => {
-    if (isTimerRunning && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          const next = prev - 1;
-          // Countdown vibrations at 3, 2, 1
-          if (phase === 'rest' && next >= 1 && next <= 3) {
-            haptics.triggerCountdownTick(settings.soundEnabled);
-          }
-          if (next === 0) {
-            handleTimerComplete();
-            return 0;
-          }
-          return next;
-        });
-      }, 1000);
-    } else {
+    if (!isTimerRunning) {
+      targetEndTimeRef.current = null;
       if (timerRef.current) clearInterval(timerRef.current);
+      return;
     }
+
+    if (!targetEndTimeRef.current && timeRemaining > 0) {
+      targetEndTimeRef.current = Date.now() + timeRemaining * 1000;
+    }
+
+    const checkTime = () => {
+      if (!targetEndTimeRef.current) return;
+      const remainingSec = Math.max(0, Math.ceil((targetEndTimeRef.current - Date.now()) / 1000));
+      setTimeRemaining(remainingSec);
+
+      if (phase === 'rest' && remainingSec >= 1 && remainingSec <= 3) {
+        haptics.triggerCountdownTick(settings.soundEnabled);
+      }
+
+      if (remainingSec === 0) {
+        targetEndTimeRef.current = null;
+        if (timerRef.current) clearInterval(timerRef.current);
+        handleTimerComplete();
+      }
+    };
+
+    // Check every second
+    timerRef.current = setInterval(checkTime, 1000);
+
+    // Also check instantly when app becomes visible / screen turns back on
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isTimerRunning) {
+        checkTime();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isTimerRunning, timeRemaining, phase]);
+  }, [isTimerRunning, phase]);
 
   const startWorkout = () => {
     if (!selectedBlock) return;

@@ -57,33 +57,19 @@ export class NotificationService {
       // Cancel previous pending timer notification if any
       await LocalNotifications.cancel({ notifications: [{ id: TIMER_NOTIFICATION_ID }] }).catch(() => {});
 
-      if (delaySeconds <= 0) {
-        // Immediate alert
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: TIMER_NOTIFICATION_ID,
-              title,
-              body,
-              channelId: 'workout_alerts',
-              schedule: { at: new Date(Date.now() + 100) },
-            },
-          ],
-        });
-      } else {
-        // Delayed alert (e.g. rest timer finishing while screen is off/app minimized)
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: TIMER_NOTIFICATION_ID,
-              title,
-              body,
-              channelId: 'workout_alerts',
-              schedule: { at: new Date(Date.now() + delaySeconds * 1000) },
-            },
-          ],
-        });
-      }
+      const targetTime = new Date(Date.now() + Math.max(1, delaySeconds) * 1000);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: TIMER_NOTIFICATION_ID,
+            title,
+            body,
+            channelId: 'workout_alerts',
+            schedule: { at: targetTime, allowWhileIdle: true },
+          },
+        ],
+      });
     } catch (e) {
       console.warn('Failed to schedule timer alert:', e);
     }
