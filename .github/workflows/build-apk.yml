@@ -17,11 +17,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 3. Set up JDK 21
+      - name: 3. Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
       - name: 4. Install dependencies
         run: npm install --legacy-peer-deps
@@ -29,41 +29,11 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Android Platform & Create Init Script
+      - name: 6. Prepare Android Platform & Sync
         run: |
           rm -rf android
           npx cap add android
 
-          # Create init.gradle directly
-          cat << 'EOF' > android/init.gradle
-          allprojects {
-              buildscript {
-                  configurations.all {
-                      resolutionStrategy {
-                          force 'org.bouncycastle:bcprov-jdk18on:1.70'
-                          force 'org.bouncycastle:bcpkix-jdk18on:1.70'
-                      }
-                  }
-              }
-              configurations.all {
-                  resolutionStrategy {
-                      force 'org.bouncycastle:bcprov-jdk18on:1.70'
-                      force 'org.bouncycastle:bcpkix-jdk18on:1.70'
-                      eachDependency { details ->
-                          if (details.requested.group == 'org.bouncycastle') {
-                              details.useVersion '1.70'
-                          }
-                      }
-                  }
-              }
-          }
-          EOF
-
-          # Configure gradle.properties
-          echo "" >> android/gradle.properties
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" >> android/gradle.properties
-
-          # Update AndroidManifest.xml permissions
           python3 -c '
           import os
           m_path = "android/app/src/main/AndroidManifest.xml"
@@ -94,7 +64,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -I init.gradle
+          ./gradlew assembleDebug --no-daemon
 
       - name: 8. Upload APK Artifact
         uses: actions/upload-artifact@v4
