@@ -29,11 +29,65 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Android Platform & Configure
+      - name: 6. Prepare Android Platform & Create Init Script
         run: |
           rm -rf android
           npx cap add android
-          node scripts/configure-android.js
+
+          # Create init.gradle directly
+          cat << 'EOF' > android/init.gradle
+          allprojects {
+              buildscript {
+                  configurations.all {
+                      resolutionStrategy {
+                          force 'org.bouncycastle:bcprov-jdk18on:1.70'
+                          force 'org.bouncycastle:bcpkix-jdk18on:1.70'
+                      }
+                  }
+              }
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.bouncycastle:bcprov-jdk18on:1.70'
+                      force 'org.bouncycastle:bcpkix-jdk18on:1.70'
+                      eachDependency { details ->
+                          if (details.requested.group == 'org.bouncycastle') {
+                              details.useVersion '1.70'
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # Configure gradle.properties
+          echo "" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" >> android/gradle.properties
+
+          # Update AndroidManifest.xml permissions
+          python3 -c '
+          import os
+          m_path = "android/app/src/main/AndroidManifest.xml"
+          if os.path.exists(m_path):
+              with open(m_path, "r", encoding="utf-8") as f:
+                  data = f.read()
+              perms = [
+                  "android.permission.VIBRATE",
+                  "android.permission.POST_NOTIFICATIONS",
+                  "android.permission.SCHEDULE_EXACT_ALARM",
+                  "android.permission.USE_EXACT_ALARM",
+                  "android.permission.WAKE_LOCK",
+                  "android.permission.RECEIVE_BOOT_COMPLETED"
+              ]
+              to_add = ""
+              for p in perms:
+                  if p not in data:
+                      to_add += f"    <uses-permission android:name=\"{p}\" />\n"
+              if to_add:
+                  data = data.replace("</manifest>", to_add + "</manifest>")
+                  with open(m_path, "w", encoding="utf-8") as f:
+                      f.write(data)
+          '
+
           npx cap sync android
 
       - name: 7. Build APK with Gradle
