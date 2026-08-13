@@ -30,42 +30,21 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
-
       - name: Add Android Platform & Sync
         run: |
-          npx cap add android || true
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           npx cap sync android
-
-      - name: Inject Android VIBRATE Permission
-        run: |
-          cat << 'EOF' > update_manifest.py
-          import os
-          path = "android/app/src/main/AndroidManifest.xml"
-          if os.path.exists(path):
-              with open(path, "r", encoding="utf-8") as f:
-                  data = f.read()
-              if "android.permission.VIBRATE" not in data:
-                  perm = '    <uses-permission android:name="android.permission.VIBRATE" />\n'
-                  data = data.replace("</manifest>", perm + "</manifest>")
-                  with open(path, "w", encoding="utf-8") as f:
-                      f.write(data)
-                  print("Permission injected successfully")
-          EOF
-          python3 update_manifest.py
 
       - name: Build APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Grit-And-Static-App-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
