@@ -30,22 +30,29 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Android Platform & Sync
+      - name: 6. Prepare Fresh Android Platform & Sync
         run: |
-          if [ ! -f "android/settings.gradle" ]; then
-            echo "Android directory missing or incomplete. Recreating..."
-            rm -rf android
-            npx cap add android
-          fi
+          rm -rf android
+          npx cap add android
+
+          python3 -c '
+          import os
+          path = "android/app/src/main/AndroidManifest.xml"
+          if os.path.exists(path):
+              with open(path, "r", encoding="utf-8") as f:
+                  data = f.read()
+              if "android.permission.VIBRATE" not in data:
+                  perm = "    <uses-permission android:name=\"android.permission.VIBRATE\" />\n"
+                  data = data.replace("</manifest>", perm + "</manifest>")
+                  with open(path, "w", encoding="utf-8") as f:
+                      f.write(data)
+          '
+
           npx cap sync android
 
-      - name: 7. Ensure Gradle Wrapper & Build APK
+      - name: 7. Build APK with Gradle
         run: |
           cd android
-          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            echo "gradle-wrapper.jar is missing on runner. Generating wrapper..."
-            gradle wrapper
-          fi
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
