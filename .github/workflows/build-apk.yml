@@ -15,7 +15,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -29,10 +29,13 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Add Android Platform & Sync
+      - name: Ensure Android execution rights & sync
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
+          fi
+          if [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
           fi
           npx cap sync android
 
