@@ -6,6 +6,22 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 class HapticService {
   private audioCtx: AudioContext | null = null;
   private wakeLockObj: any = null;
+  private shouldHoldWakeLock = false;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          if (this.shouldHoldWakeLock) {
+            this.requestWakeLock();
+          }
+          if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
+        }
+      });
+    }
+  }
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -38,40 +54,30 @@ class HapticService {
   }
 
   /**
-   * Safe vibration wrapper using Capacitor Native Haptics with Web Fallback
+   * Safe vibration wrapper using Capacitor Native Haptics with Web/Android Navigator Fallback
    */
   public vibrate(pattern: number | number[]): boolean {
-    const duration = Array.isArray(pattern) ? (pattern[0] || 100) : pattern;
+    let handled = false;
 
-    // 1. Try Native Capacitor Haptics (For APK)
-    try {
-      Haptics.vibrate({ duration: Math.max(duration, 30) }).catch(() => {
-        // Fallback to Web API if native call fails
-        if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
-          navigator.vibrate(pattern);
-        }
-      });
-    } catch {
-      // Fallback
-      if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
-        try {
-          navigator.vibrate(pattern);
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    // 2. Also trigger navigator.vibrate for Web/PWA
-    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
+    // 1. Try navigator.vibrate first - Android WebView natively supports array patterns (e.g. [150, 80, 150, 80, 300])
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {
         navigator.vibrate(pattern);
-        return true;
+        handled = true;
       } catch {
-        return false;
+        // ignore
       }
     }
-    return false;
+
+    // 2. Also trigger Capacitor Native Haptics plugin for APK single-duration support
+    try {
+      const duration = Array.isArray(pattern) ? (pattern[0] || 100) : pattern;
+      Haptics.vibrate({ duration: Math.max(duration, 30) }).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    return handled;
   }
 
   // --- Synthesized Audio Tone Fallback ---
@@ -168,11 +174,12 @@ class HapticService {
 
   // --- Screen WakeLock (Always On Display) ---
   public async requestWakeLock(): Promise<boolean> {
+    this.shouldHoldWakeLock = true;
     if (typeof window !== 'undefined' && 'wakeLock' in navigator) {
       try {
         this.wakeLockObj = await (navigator as any).wakeLock.request('screen');
         return true;
-      } catch (err) {
+      } catch {
         return false;
       }
     }
@@ -180,10 +187,11 @@ class HapticService {
   }
 
   public releaseWakeLock(): void {
+    this.shouldHoldWakeLock = false;
     if (this.wakeLockObj) {
       try {
         this.wakeLockObj.release();
-      } catch (e) {
+      } catch {
         // ignore
       }
       this.wakeLockObj = null;

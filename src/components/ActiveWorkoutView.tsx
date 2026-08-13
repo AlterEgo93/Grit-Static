@@ -71,6 +71,16 @@ export const ActiveWorkoutView: React.FC<Props> = ({
     }
   }, [blocks, selectedBlock]);
 
+  // Keep screen awake during active workout phases
+  useEffect(() => {
+    if (phase !== 'idle' && phase !== 'finished') {
+      haptics.unlockVibration();
+      haptics.requestWakeLock();
+    } else {
+      haptics.releaseWakeLock();
+    }
+  }, [phase]);
+
   // Clean up wake lock on unmount
   useEffect(() => {
     return () => {

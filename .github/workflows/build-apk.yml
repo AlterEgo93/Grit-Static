@@ -31,29 +31,18 @@ jobs:
 
       - name: 6. Prepare Android Platform & Sync
         run: |
-          rm -rf android
-          npx cap add android
-          
-          python3 -c '
-          import os
-          path = "android/app/src/main/AndroidManifest.xml"
-          if os.path.exists(path):
-              with open(path, "r", encoding="utf-8") as f:
-                  data = f.read()
-              if "android.permission.VIBRATE" not in data:
-                  perm = "    <uses-permission android:name=\"android.permission.VIBRATE\" />\n"
-                  data = data.replace("</manifest>", perm + "</manifest>")
-                  with open(path, "w", encoding="utf-8") as f:
-                      f.write(data)
-          '
-          
+          if [ ! -f "android/settings.gradle" ]; then
+            echo "Android directory is missing or incomplete. Recreating clean Android platform..."
+            rm -rf android
+            npx cap add android
+          fi
           npx cap sync android
 
       - name: 7. Build APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 8. Upload APK Artifact
         uses: actions/upload-artifact@v4

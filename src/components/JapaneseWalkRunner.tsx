@@ -67,11 +67,13 @@ export const JapaneseWalkRunner: React.FC<Props> = ({
   }, [targetCycles]);
 
   useEffect(() => {
-    if (isWorkoutMode) {
-      setIsRunning(true);
-      if (settings.keepScreenOn) haptics.requestWakeLock();
+    if (isRunning && subPhase !== 'finished') {
+      haptics.unlockVibration();
+      haptics.requestWakeLock();
+    } else {
+      haptics.releaseWakeLock();
     }
-  }, [isWorkoutMode]);
+  }, [isRunning, subPhase]);
 
   // Metronome Ticker Loop (Only active during fast / normal phases)
   useEffect(() => {
