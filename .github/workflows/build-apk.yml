@@ -29,63 +29,53 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Fresh Android Platform & Configure
+      - name: 6. Prepare Fresh Android Platform
         run: |
           rm -rf android
           npx cap add android
 
-          python3 -c '
+      - name: 6.5 Inject Android Permissions & Fix BouncyCastle
+        run: |
+          python3 -c "
           import os
 
-          # Update AndroidManifest.xml permissions
-          m_path = "android/app/src/main/AndroidManifest.xml"
+          # 1. Update AndroidManifest.xml permissions
+          m_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(m_path):
-              with open(m_path, "r", encoding="utf-8") as f:
+              with open(m_path, 'r', encoding='utf-8') as f:
                   data = f.read()
               perms = [
-                  "android.permission.VIBRATE",
-                  "android.permission.POST_NOTIFICATIONS",
-                  "android.permission.SCHEDULE_EXACT_ALARM",
-                  "android.permission.USE_EXACT_ALARM",
-                  "android.permission.WAKE_LOCK",
-                  "android.permission.RECEIVE_BOOT_COMPLETED"
+                  'android.permission.VIBRATE',
+                  'android.permission.POST_NOTIFICATIONS',
+                  'android.permission.SCHEDULE_EXACT_ALARM',
+                  'android.permission.USE_EXACT_ALARM',
+                  'android.permission.WAKE_LOCK',
+                  'android.permission.RECEIVE_BOOT_COMPLETED'
               ]
-              to_add = ""
+              to_add = ''
               for p in perms:
                   if p not in data:
-                      to_add += f"    <uses-permission android:name=\"{p}\" />\n"
+                      to_add += f'    <uses-permission android:name=\"{p}\" />\n'
               if to_add:
-                  data = data.replace("</manifest>", to_add + "</manifest>")
-                  with open(m_path, "w", encoding="utf-8") as f:
+                  data = data.replace('</manifest>', to_add + '</manifest>')
+                  with open(m_path, 'w', encoding='utf-8') as f:
                       f.write(data)
 
-          # Configure gradle.properties for memory
-          p_path = "android/gradle.properties"
+          # 2. Configure gradle.properties for memory
+          p_path = 'android/gradle.properties'
           if os.path.exists(p_path):
-              with open(p_path, "a", encoding="utf-8") as f:
-                  f.write("\norg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n")
+              with open(p_path, 'a', encoding='utf-8') as f:
+                  f.write('\norg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n')
 
-          # Inject subprojects BouncyCastle force rule into android/build.gradle
-          b_path = "android/build.gradle"
+          # 3. Inject BouncyCastle 1.70 force resolution into build.gradle
+          b_path = 'android/build.gradle'
           if os.path.exists(b_path):
-              with open(b_path, "r", encoding="utf-8") as f:
-                  b_data = f.read()
-              rule = """
-subprojects {
-    configurations.all {
-        resolutionStrategy {
-            force "org.bouncycastle:bcprov-jdk18on:1.70"
-            force "org.bouncycastle:bcpkix-jdk18on:1.70"
-        }
-    }
-}
-"""
-              b_data += rule
-              with open(b_path, "w", encoding="utf-8") as f:
-                  f.write(b_data)
-          '
+              with open(b_path, 'a', encoding='utf-8') as f:
+                  f.write('\nsubprojects { configurations.all { resolutionStrategy { force \"org.bouncycastle:bcprov-jdk18on:1.70\"; force \"org.bouncycastle:bcpkix-jdk18on:1.70\" } } }\n')
+          "
 
-          npx cap sync android
+      - name: 6.6 Sync Capacitor Android
+        run: npx cap sync android
 
       - name: 7. Build APK with Gradle
         env:
