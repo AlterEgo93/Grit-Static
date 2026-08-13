@@ -29,57 +29,17 @@ jobs:
       - name: 5. Build web application
         run: npm run build
 
-      - name: 6. Prepare Fresh Android Platform
+      - name: 6. Prepare Android Platform & Configure
         run: |
           rm -rf android
           npx cap add android
-
-      - name: 6.5 Inject Android Permissions & Fix BouncyCastle
-        run: |
-          python3 -c "
-          import os
-
-          # 1. Update AndroidManifest.xml permissions
-          m_path = 'android/app/src/main/AndroidManifest.xml'
-          if os.path.exists(m_path):
-              with open(m_path, 'r', encoding='utf-8') as f:
-                  data = f.read()
-              perms = [
-                  'android.permission.VIBRATE',
-                  'android.permission.POST_NOTIFICATIONS',
-                  'android.permission.SCHEDULE_EXACT_ALARM',
-                  'android.permission.USE_EXACT_ALARM',
-                  'android.permission.WAKE_LOCK',
-                  'android.permission.RECEIVE_BOOT_COMPLETED'
-              ]
-              to_add = ''
-              for p in perms:
-                  if p not in data:
-                      to_add += f'    <uses-permission android:name=\"{p}\" />\n'
-              if to_add:
-                  data = data.replace('</manifest>', to_add + '</manifest>')
-                  with open(m_path, 'w', encoding='utf-8') as f:
-                      f.write(data)
-
-          # 2. Configure gradle.properties for memory
-          p_path = 'android/gradle.properties'
-          if os.path.exists(p_path):
-              with open(p_path, 'a', encoding='utf-8') as f:
-                  f.write('\norg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n')
-
-          # 3. Inject BouncyCastle 1.70 force resolution into build.gradle
-          b_path = 'android/build.gradle'
-          if os.path.exists(b_path):
-              with open(b_path, 'a', encoding='utf-8') as f:
-                  f.write('\nsubprojects { configurations.all { resolutionStrategy { force \"org.bouncycastle:bcprov-jdk18on:1.70\"; force \"org.bouncycastle:bcpkix-jdk18on:1.70\" } } }\n')
-          "
-
-      - name: 6.6 Sync Capacitor Android
-        run: npx cap sync android
+          node scripts/configure-android.js
+          npx cap sync android
 
       - name: 7. Build APK with Gradle
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m"
+          GRADLE_USER_HOME: "${{ github.workspace }}/.gradle-user-home"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -Dorg.gradle.vfs.watch=false"
         run: |
           cd android
           chmod +x gradlew
