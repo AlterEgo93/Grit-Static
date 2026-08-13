@@ -32,17 +32,21 @@ jobs:
       - name: 6. Prepare Android Platform & Sync
         run: |
           if [ ! -f "android/settings.gradle" ]; then
-            echo "Android directory is missing or incomplete. Recreating clean Android platform..."
+            echo "Android directory missing or incomplete. Recreating..."
             rm -rf android
             npx cap add android
           fi
           npx cap sync android
 
-      - name: 7. Build APK with Gradle
+      - name: 7. Ensure Gradle Wrapper & Build APK
         run: |
           cd android
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "gradle-wrapper.jar is missing on runner. Generating wrapper..."
+            gradle wrapper
+          fi
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: 8. Upload APK Artifact
         uses: actions/upload-artifact@v4
