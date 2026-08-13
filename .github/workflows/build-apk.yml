@@ -1,4 +1,5 @@
 name: Build Android APK
+# Trigger rebuild v2: Android vibration and Gradle fix
 
 on:
   push:
